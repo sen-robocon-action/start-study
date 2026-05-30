@@ -2,139 +2,109 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <title>AI学習プリントジェネレーター Pro (API固定版)</title>
+    <title>AI学習プリントジェネレーター Pro</title>
     <style>
-        :root { --primary: #2c3e50; --ai-color: #8e44ad; --bg: #f8f9fa; }
-        body { font-family: "Helvetica Neue", Arial, "Hiragino Kaku Gothic ProN", sans-serif; background: var(--bg); padding: 20px; color: var(--primary); }
-        .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 40px; border-radius: 15px; box-shadow: 0 5px 25px rgba(0,0,0,0.1); }
-        .no-print { background: #fff; border: 2px solid var(--ai-color); padding: 25px; border-radius: 12px; margin-bottom: 30px; }
+        :root { --primary: #2c3e50; --ai-color: #8e44ad; }
+        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; color: var(--primary); }
+        .container { max-width: 900px; margin: 0 auto; background: #fff; padding: 30px; border-radius: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .panel { border: 1px solid #ddd; padding: 20px; border-radius: 10px; margin-bottom: 20px; }
+        .ai-panel { border-color: var(--ai-color); background: #fdfaff; }
+        h2 { color: var(--ai-color); font-size: 1.2em; margin-top: 0; }
+        .input-group { margin-bottom: 15px; }
+        input, select, button { padding: 10px; border-radius: 5px; border: 1px solid #ccc; }
+        button { cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-ai { background: var(--ai-color); color: white; border: none; width: 100%; }
+        .btn-ai:hover { opacity: 0.8; }
+        .btn-print { background: #27ae60; color: white; border: none; margin-top: 10px; }
         
-        h1 { margin-top: 0; font-size: 1.5em; display: flex; align-items: center; gap: 10px; }
-        .config-row { display: flex; flex-wrap: wrap; gap: 15px; align-items: center; margin-bottom: 20px; }
+        /* 印刷レイアウト */
+        .test-paper { margin-top: 30px; border-top: 2px solid #333; padding-top: 20px; }
+        .question { margin-bottom: 20px; padding: 15px; border-bottom: 1px solid #eee; page-break-inside: avoid; }
+        .answer { display: none; color: #e74c3c; font-weight: bold; margin-top: 10px; }
         
-        select, input { padding: 12px; border-radius: 8px; border: 1px solid #ddd; font-size: 16px; min-width: 120px; }
-        button { padding: 12px 25px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.3s; }
-        .btn-ai { background: var(--ai-color); color: white; flex-grow: 1; font-size: 1.1em; }
-        .btn-ai:hover { background: #732d91; box-shadow: 0 4px 10px rgba(142, 68, 173, 0.3); }
-        .btn-print { background: #27ae60; color: white; width: 100%; margin-top: 10px; }
-        
-        #loading { display: none; margin: 15px 0; color: var(--ai-color); text-align: center; font-weight: bold; animation: blink 1.5s infinite; }
-        @keyframes blink { 0% { opacity: 0.3; } 50% { opacity: 1; } 100% { opacity: 0.3; } }
-
-        /* テスト用紙のスタイル */
-        .test-paper { border-top: 3px solid #333; padding-top: 30px; margin-top: 10px; }
-        .test-header { display: flex; justify-content: space-between; margin-bottom: 40px; border-bottom: 1px solid #333; padding-bottom: 10px; }
-        .question { margin-bottom: 35px; page-break-inside: avoid; }
-        .q-title { font-weight: bold; font-size: 1.1em; margin-bottom: 10px; }
-        .q-body { font-size: 1.3em; margin-bottom: 15px; line-height: 1.5; padding-left: 10px; border-left: 4px solid #eee; }
-        .options-list { list-style-type: none; padding-left: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .options-list li { border: 1px solid #ddd; padding: 10px; border-radius: 5px; }
-        
-        .answer-label { display: none; color: #e74c3c; background: #fff5f5; padding: 15px; border-radius: 8px; border: 1px dashed #e74c3c; margin-top: 15px; }
-
         @media print {
-            .no-print { display: none !important; }
-            body { background: white; padding: 0; }
-            .container { box-shadow: none; max-width: 100%; padding: 0; }
-            .answer-label { display: block !important; }
+            .no-print { display: none; }
+            .answer { display: block !important; }
+            .container { box-shadow: none; width: 100%; max-width: 100%; }
         }
+        #loading { display: none; color: var(--ai-color); font-weight: bold; text-align: center; }
     </style>
 </head>
 <body>
 
 <div class="container">
     <div class="no-print">
-        <h1>✨ AI教材自動生成エンジン</h1>
-        <div class="config-row">
-            <div>
-                <label>学年:</label><br>
-                <select id="grade">
-                    <option value="小学1年">小学1年</option><option value="小学2年">小学2年</option>
-                    <option value="小学3年">小学3年</option><option value="小学4年">小学4年</option>
-                    <option value="小学5年">小学5年</option><option value="小学6年">小学6年</option>
-                    <option value="中学1年">中学1年</option><option value="中学2年">中学2年</option>
-                    <option value="中学3年">中学3年</option>
-                    <option value="高校1年">高校1年</option><option value="高校2年">高校2年</option>
-                    <option value="高校3年">高校3年</option>
-                </select>
-            </div>
-            <div>
-                <label>教科:</label><br>
-                <select id="subject">
-                    <option value="国語">国語</option>
-                    <option value="数学">数学(算数)</option>
-                    <option value="英語">英語</option>
-                    <option value="社会">社会</option>
-                    <option value="理科">理科</option>
-                </select>
-            </div>
-            <div>
-                <label>問題数:</label><br>
-                <input type="number" id="qCount" value="5" min="1" max="20">
-            </div>
-            <div style="flex-grow: 1; padding-top: 18px;">
-                <button class="btn-ai" onclick="generateWithAI()">AIで問題を生成する</button>
-            </div>
+        <h1>🏫 AIテストメーカー</h1>
+        
+        <div class="panel">
+            <label>Google Gemini APIキー:</label>
+            <input type="password" id="apiKey" placeholder="AIを使うにはキーを入力してください" style="width: 300px;">
+            <small><a href="https://aistudio.google.com/app/apikey" target="_blank">キーを取得(無料)</a></small>
         </div>
-        <div id="loading">AIが教科書と最新のトレンドを確認しています...</div>
-        <button class="btn btn-print" onclick="window.print()">🖨️ テストを印刷する (解答付き)</button>
+
+        <div class="panel ai-panel">
+            <h2>✨ AIに問題を考えてもらう</h2>
+            <div class="input-group">
+                学年: <select id="grade">
+                    <option value="小学1年">小学1年</option><option value="小学6年">小学6年</option>
+                    <option value="中学3年">中学3年</option><option value="高校3年">高校3年</option>
+                </select>
+                教科: <select id="subject">
+                    <option value="国語">国語</option><option value="数学">数学</option>
+                    <option value="英語">英語</option><option value="社会">社会</option><option value="理科">理科</option>
+                </select>
+                数: <input type="number" id="qCount" value="3" style="width: 50px;">
+            </div>
+            <button class="btn-ai" onclick="generateWithAI()">AIで問題を生成してテストを作成</button>
+            <div id="loading">AIが思考中... (5〜10秒ほどかかります)</div>
+        </div>
+        
+        <button class="btn btn-print" onclick="window.print()">🖨️ プリント印刷（回答付き）</button>
     </div>
 
-    <div id="test-display">
-        <p style="text-align: center; color: #999; margin-top: 50px;">
-            学年と教科を選んで「生成」ボタンを押してください。<br>
-            AIが最適な問題を自動で作成します。
-        </p>
+    <div id="test-display" class="test-paper">
+        <p style="color: #999; text-align: center;">AIで生成した問題がここに表示されます。</p>
     </div>
 </div>
 
 <script>
-    // APIキーを固定
-    const API_KEY = "AQ.Ab8RN6IGxkwqHCJf_r5K6molWTGgGi2UhOCALGRJUk83Tv6aOw";
-
     async function generateWithAI() {
+        const key = document.getElementById('apiKey').value;
+        if (!key) { alert("APIキーを入力してください"); return; }
+
         const grade = document.getElementById('grade').value;
         const subject = document.getElementById('subject').value;
         const count = document.getElementById('qCount').value;
         const loading = document.getElementById('loading');
-        const display = document.getElementById('test-display');
         
         loading.style.display = 'block';
 
-        const prompt = `あなたはベテランの学校教師です。${grade}の${subject}のテスト問題を作成してください。
-        以下の条件を厳守してください：
-        1. 間違えやすい「ひっかけ問題」や、学力向上に重要な必須語句を必ず含めること。
-        2. 選択問題、穴埋め、文章題など、バリエーションを豊かにすること。
-        3. 出力は以下のJSON配列形式のみとすること（前後の説明文は一切不要）：
-        [
-          {
-            "q": "問題文",
-            "a": "正解の解説",
-            "type": "選択/記述/穴埋め",
-            "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4"] // 選択問題の場合のみ
-          }
-        ]
-        問題数は${count}問。`;
+        // AIへの指示（プロンプト）
+        const prompt = `${grade}の${subject}の問題を${count}問作成してください。
+        条件：
+        - 間違えやすいポイントや重要な語句を含める
+        - 選択問題や記述問題を混ぜる
+        - 以下のJSONフォーマットのみで出力してください（余計な説明は不要）
+        [{"q": "問題文", "a": "答え", "type": "選択/記述", "options": ["選択肢1", "選択肢2"]}]`;
 
         try {
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
             });
 
             const data = await response.json();
-            let aiText = data.candidates[0].content.parts[0].text;
+            const aiText = data.candidates[0].content.parts[0].text;
             
-            // JSONの抽出
-            const jsonMatch = aiText.match(/\[.*\]/s);
-            if (!jsonMatch) throw new Error("JSON形式の取得に失敗しました");
-            
-            const questions = JSON.parse(jsonMatch[0]);
+            // JSON部分だけを抽出（AIが```json ... ```で囲む場合があるため）
+            const jsonStr = aiText.match(/\[.*\]/s)[0];
+            const questions = JSON.parse(jsonStr);
+
             renderTest(questions, grade, subject);
         } catch (e) {
             console.error(e);
-            display.innerHTML = `<p style="color:red; padding:20px; border:1px solid red;">AIの応答に失敗しました。キーの有効期限や、リクエスト制限を確認してください。</p>`;
+            alert("AI生成に失敗しました。APIキーを確認するか、時間をおいて試してください。");
         } finally {
             loading.style.display = 'none';
         }
@@ -142,40 +112,20 @@
 
     function renderTest(questions, grade, subject) {
         const display = document.getElementById('test-display');
-        let html = `
-            <div class="test-paper">
-                <div class="test-header">
-                    <span style="font-size: 1.4em; font-weight: bold;">${grade} ${subject} 実力診断テスト</span>
-                    <span>氏名：__________________________</span>
-                </div>
-        `;
+        let html = `<h2>${grade} ${subject} 実力テスト</h2>`;
         
         questions.forEach((q, i) => {
             html += `
                 <div class="question">
-                    <div class="q-title">問 ${i + 1}. [${q.type}]</div>
-                    <div class="q-body">${q.q.replace(/\n/g, '<br>')}</div>
+                    <strong>問 ${i + 1}. [${q.type}]</strong><br>
+                    <p style="font-size: 1.2em;">${q.q}</p>
             `;
-            
-            if (q.options && q.options.length > 0) {
-                html += `<ul class="options-list">`;
-                q.options.forEach((opt, idx) => {
-                    html += `<li>${idx + 1}. ${opt}</li>`;
-                });
-                html += `</ul>`;
-            } else {
-                html += `<div style="height: 60px; border-bottom: 1px solid #eee;"></div>`;
+            if (q.options) {
+                html += `<ul>${q.options.map(opt => `<li>${opt}</li>`).join('')}</ul>`;
             }
-            
-            html += `
-                    <div class="answer-label">
-                        <strong>【正解と解説】</strong><br>${q.a}
-                    </div>
-                </div>
-            `;
+            html += `<div class="answer">【正解】 ${q.a}</div></div>`;
         });
         
-        html += `</div>`;
         display.innerHTML = html;
     }
 </script>
